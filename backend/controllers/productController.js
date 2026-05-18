@@ -1,5 +1,5 @@
-const Product = require('../models/Product');
-const Category = require('../models/Category');
+const productRepository = require('../repositories/ProductRepository');
+const categoryRepository = require('../repositories/CategoryRepository');
 
 /**
  * @desc  Get all products with optional search and category filter.
@@ -22,9 +22,7 @@ const getProducts = async (req, res) => {
             filter.category = req.query.category;
         }
 
-        const products = await Product.find(filter)
-            .populate('category', 'name')
-            .sort({ createdAt: -1 });
+        const products = await productRepository.findAll(filter);
 
         res.json(products);
     } catch (error) {
@@ -39,7 +37,7 @@ const getProducts = async (req, res) => {
  */
 const getProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id).populate('category', 'name');
+        const product = await productRepository.findByIdWithCategory(req.params.id);
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
         }
@@ -67,15 +65,15 @@ const createProduct = async (req, res) => {
 
     try {
         // Confirm the referenced category actually exists
-        const categoryExists = await Category.findById(category);
+        const categoryExists = await categoryRepository.findById(category);
         if (!categoryExists) {
             return res.status(400).json({ message: 'Referenced category does not exist' });
         }
 
-        const product = await Product.create({ name, description, price, category, stock, imageUrl });
+        const product = await productRepository.create({ name, description, price, category, stock, imageUrl });
 
         // Return the product with category name populated
-        const populated = await product.populate('category', 'name');
+        const populated = await productRepository.populateCategory(product);
         res.status(201).json(populated);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -91,14 +89,14 @@ const updateProduct = async (req, res) => {
     const { name, description, price, category, stock, imageUrl } = req.body;
 
     try {
-        const product = await Product.findById(req.params.id);
+        const product = await productRepository.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
         }
 
         // If a new category is supplied, confirm it exists before saving
         if (category && category.toString() !== product.category.toString()) {
-            const categoryExists = await Category.findById(category);
+            const categoryExists = await categoryRepository.findById(category);
             if (!categoryExists) {
                 return res.status(400).json({ message: 'Referenced category does not exist' });
             }
@@ -112,8 +110,8 @@ const updateProduct = async (req, res) => {
         if (stock !== undefined) product.stock = stock;
         if (imageUrl !== undefined) product.imageUrl = imageUrl;
 
-        const updatedProduct = await product.save();
-        const populated = await updatedProduct.populate('category', 'name');
+        const updatedProduct = await productRepository.save(product);
+        const populated = await productRepository.populateCategory(updatedProduct);
         res.json(populated);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -127,12 +125,12 @@ const updateProduct = async (req, res) => {
  */
 const deleteProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const product = await productRepository.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
         }
 
-        await Product.findByIdAndDelete(req.params.id);
+        await productRepository.deleteById(req.params.id);
         res.json({ message: 'Product deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
