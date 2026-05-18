@@ -1,6 +1,6 @@
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const userRepository = require('../repositories/UserRepository');
 
 // Helper: generate a signed JWT for the given user ID
 const generateToken = (id) => {
@@ -15,10 +15,10 @@ const generateToken = (id) => {
 const registerUser = async (req, res) => {
     const { name, email, password } = req.body;
     try {
-        const userExists = await User.findOne({ email });
+        const userExists = await userRepository.findByEmail(email);
         if (userExists) return res.status(400).json({ message: 'User already exists' });
 
-        const user = await User.create({ name, email, password });
+        const user = await userRepository.create({ name, email, password });
         res.status(201).json({ id: user.id, name: user.name, email: user.email, token: generateToken(user.id) });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -33,7 +33,7 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
     try {
-        const user = await User.findOne({ email });
+        const user = await userRepository.findByEmail(email);
         if (user && (await bcrypt.compare(password, user.password))) {
             res.json({ id: user.id, name: user.name, email: user.email, role: user.role, token: generateToken(user.id) });
         } else {
@@ -51,7 +51,7 @@ const loginUser = async (req, res) => {
  */
 const getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const user = await userRepository.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -75,14 +75,14 @@ const getProfile = async (req, res) => {
  */
 const updateUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const user = await userRepository.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const { name, email } = req.body;
         user.name = name || user.name;
         user.email = email || user.email;
 
-        const updatedUser = await user.save();
+        const updatedUser = await userRepository.save(user);
         res.json({
             id: updatedUser.id,
             name: updatedUser.name,
@@ -102,8 +102,7 @@ const updateUserProfile = async (req, res) => {
  */
 const getUsers = async (req, res) => {
     try {
-        // Exclude the password field from the returned documents
-        const users = await User.find().select('-password');
+        const users = await userRepository.findAllWithoutPassword();
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -1,5 +1,5 @@
-const Category = require('../models/Category');
-const Product = require('../models/Product');
+const categoryRepository = require('../repositories/CategoryRepository');
+const productRepository = require('../repositories/ProductRepository');
 
 /**
  * @desc  Get all categories
@@ -8,7 +8,7 @@ const Product = require('../models/Product');
  */
 const getCategories = async (req, res) => {
     try {
-        const categories = await Category.find().sort({ name: 1 });
+        const categories = await categoryRepository.findAll();
         res.json(categories);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -22,7 +22,7 @@ const getCategories = async (req, res) => {
  */
 const getCategory = async (req, res) => {
     try {
-        const category = await Category.findById(req.params.id);
+        const category = await categoryRepository.findById(req.params.id);
         if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }
@@ -46,7 +46,7 @@ const createCategory = async (req, res) => {
     }
 
     try {
-        const category = await Category.create({ name, description });
+        const category = await categoryRepository.create({ name, description });
         res.status(201).json(category);
     } catch (error) {
         // Handle duplicate name (MongoDB unique index violation)
@@ -66,7 +66,7 @@ const updateCategory = async (req, res) => {
     const { name, description } = req.body;
 
     try {
-        const category = await Category.findById(req.params.id);
+        const category = await categoryRepository.findById(req.params.id);
         if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }
@@ -75,7 +75,7 @@ const updateCategory = async (req, res) => {
         if (name !== undefined) category.name = name;
         if (description !== undefined) category.description = description;
 
-        const updatedCategory = await category.save();
+        const updatedCategory = await categoryRepository.save(category);
         res.json(updatedCategory);
     } catch (error) {
         // Handle duplicate name on update
@@ -94,20 +94,20 @@ const updateCategory = async (req, res) => {
  */
 const deleteCategory = async (req, res) => {
     try {
-        const category = await Category.findById(req.params.id);
+        const category = await categoryRepository.findById(req.params.id);
         if (!category) {
             return res.status(404).json({ message: 'Category not found' });
         }
 
         // Prevent deletion if products are still assigned to this category
-        const productCount = await Product.countDocuments({ category: req.params.id });
+        const productCount = await productRepository.countByCategory(req.params.id);
         if (productCount > 0) {
             return res.status(400).json({
                 message: `Cannot delete — ${productCount} product(s) still reference this category`,
             });
         }
 
-        await Category.findByIdAndDelete(req.params.id);
+        await categoryRepository.deleteById(req.params.id);
         res.json({ message: 'Category deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
