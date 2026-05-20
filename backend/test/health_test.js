@@ -6,6 +6,8 @@ const { expect } = chai;
 chai.use(chaiHttp);
 
 describe('GET /api/health', () => {
+  after(() => chai.request(app).close());
+
   it('returns 200 with status ok', async () => {
     const res = await chai.request(app).get('/api/health');
     expect(res).to.have.status(200);
