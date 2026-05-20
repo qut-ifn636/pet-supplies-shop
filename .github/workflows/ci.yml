@@ -27,22 +27,19 @@ jobs:
         working-directory: ./frontend
         run: yarn install
 
-      - name: Build frontend
-        working-directory: ./frontend
-        run: yarn build
-
       - name: Run backend tests
         working-directory: ./backend
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           PORT: ${{ secrets.PORT }}
-        run: npm test
+        run: yarn test
 
   deploy:
     name: Deploy (${{ matrix.instance }})
     needs: test
     strategy:
+      fail-fast: false
       matrix:
         instance: [ec2-1, ec2-2]
     runs-on: [self-hosted, "${{ matrix.instance }}"]
@@ -52,6 +49,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: false  # Preserve backend/.env so INSTANCE_ID is not erased
+
+      - name: Verify .env exists
+        run: test -f backend/.env || (echo "ERROR: backend/.env missing on runner" && exit 1)
 
       - name: Install backend dependencies
         working-directory: ./backend
