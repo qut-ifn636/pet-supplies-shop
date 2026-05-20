@@ -1,80 +1,67 @@
-name: Backend CI
+name: Petopia CI/CD
 
 on:
   push:
     branches:
-      - main  # Trigger CI on pushes to the main branch
-
+      - main
 
 jobs:
   test:
-    name: Run Tests
-    runs-on: self-hosted
-
-    strategy:
-      matrix:
-        node-version: [22] # Test on multiple Node.js versions
-
-
-    environment: MONGO_URI
+    name: Test
+    runs-on: [self-hosted, petopia]
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # Set up Node.js
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-    - name: Print Env Secret
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: yarn install
 
-      env:
-        MONGO_URI: ${{ secrets.MONGO_URI }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        PORT: ${{ secrets.PORT }}
-      run: | 
-        echo "Secret 1 is: $MONGO_URI"
-        echo "Secret 2 is: $JWT_SECRET"
-        echo "Secret 3 is: $PORT"
-      
-    - run: pm2 stop all
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: yarn install
 
-    # Install dependencies for backend
-    - name: Install Backend Dependencies
-      working-directory: ./backend
-      run: | 
-       npm install --global yarn
-       yarn --version
-       yarn install
-      
-    # Install dependencies for frontend
-    - name: Install Frontend Dependencies
-      working-directory: ./frontend
-      run: |
-        df -h
-        sudo rm -rf ./build
-        yarn install
-        yarn run build
+      - name: Build frontend
+        working-directory: ./frontend
+        run: yarn build
 
+      - name: Run backend tests
+        working-directory: ./backend
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: ${{ secrets.PORT }}
+        run: npm test
 
-    # Run backend tests
-    - name: Run Backend Tests
-      env:
-        MONGO_URI: ${{ secrets.MONGO_URI }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        PORT: ${{ secrets.PORT }}
-      working-directory: ./backend
-      run: npm test
+  deploy:
+    name: Deploy (${{ matrix.instance }})
+    needs: test
+    strategy:
+      matrix:
+        instance: [ec2-1, ec2-2]
+    runs-on: [self-hosted, "${{ matrix.instance }}"]
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          clean: false  # Preserve backend/.env so INSTANCE_ID is not erased
 
-    - run: npm ci
-    - run: | 
-        cd ./backend
-        touch .env
-        echo "${{ secrets.PROD }}" > .env
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: yarn install
 
-    - run: pm2 start all
+      - name: Build frontend
+        working-directory: ./frontend
+        run: |
+          yarn install
+          yarn build
 
-    - run: pm2 restart all
+      - name: Restart backend
+        run: pm2 restart petopia-backend
