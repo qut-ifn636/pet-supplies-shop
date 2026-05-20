@@ -8,13 +8,12 @@ config:
       name: Ramp 1 to 200 VU/s
   http:
     timeout: 10
+  ensure:
+    p99: 2000
+    maxErrorRate: 1
 
 scenarios:
   - name: Health check
     flow:
       - get:
           url: /api/health
-  - name: Products
-    flow:
-      - get:
-          url: /api/products

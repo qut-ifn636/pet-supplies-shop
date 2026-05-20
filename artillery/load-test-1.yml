@@ -7,6 +7,9 @@ config:
       name: Sustained 50 VU/s
   http:
     timeout: 10
+  ensure:
+    p99: 2000
+    maxErrorRate: 1
 
 scenarios:
   - name: Health check
