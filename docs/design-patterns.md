@@ -9,7 +9,7 @@
 ### 1. Singleton — `backend/config/db.js`
 
 **What is it?**
-Imagine a town that only ever needs one post office. No matter how many people want to send a letter, they all go to the same post office — there's no point building a second one. A Singleton ensures a class has only one instance and everyone shares it.
+Imagine a pet store with one central stock management system. Every department — food, toys, accessories — queries the same system to check inventory. There's no point running a separate database for each department; one shared system handles all queries. A Singleton ensures a class has only one instance and everyone shares it.
 
 **In Petopia:**
 The `connectDB` function connects to MongoDB once. The connection is created the first time the app starts and reused for every database query from that point on. Mongoose itself manages the single connection pool under the hood — `connectDB` is only called once in `server.js`.
@@ -30,7 +30,7 @@ Opening a new database connection for every request would be extremely slow and 
 ### 2. Factory — `backend/responseFactory.js`
 
 **What is it?**
-Imagine a bakery that stamps every loaf with the same label — ingredient list, weight, date. You don't stamp each loaf differently; you have one stamp machine (the factory) that always produces the same consistent label. A Factory centralises object creation so every object comes out in the same standard shape.
+Imagine a pet store's label printer. Every product on the shelf — dog food, cat toys, fish tanks — gets a label printed in exactly the same format: name, price, SKU, and barcode. No one hand-writes labels differently for each product; one printer produces a consistent label every time. A Factory centralises object creation so every object comes out in the same standard shape.
 
 **In Petopia:**
 `ResponseFactory` is a class with static methods that build response objects. Every controller calls `ResponseFactory.ok()`, `ResponseFactory.notFound()`, etc. instead of constructing the JSON object by hand. Every response automatically includes `success`, `message`, `data`, `timestamp`, and `statusCode`.
@@ -59,7 +59,7 @@ Without a factory, each controller would hand-craft its own JSON shape. One cont
 ### 3. Repository — `backend/repositories/`
 
 **What is it?**
-Imagine a librarian. When you want a book, you ask the librarian — you don't go into the back room yourself and search through the shelves. The librarian knows exactly where everything is. A Repository is that librarian: it hides all the database query details behind plain, intention-revealing methods.
+Imagine a pet store warehouse manager. When a staff member needs to know if a particular brand of dog food is in stock, they ask the warehouse manager — they don't go into the warehouse and search through every shelf themselves. The warehouse manager knows exactly where everything is stored and returns the answer. A Repository is that warehouse manager: it hides all the database query details behind plain, intention-revealing methods.
 
 **In Petopia:**
 Three repository classes (`UserRepository`, `CategoryRepository`, `ProductRepository`) wrap all Mongoose queries. Controllers never write `.find()`, `.findById()`, or `.populate()` directly — they call methods like `userRepo.findByEmail()` or `productRepo.findByIdWithCategory()`.
@@ -90,7 +90,7 @@ If you ever switch from Mongoose to a different database library, you only chang
 ### 4. Chain of Responsibility — `backend/middleware/`
 
 **What is it?**
-Imagine airport security: first you scan your boarding pass, then your bag goes through X-ray, then you walk through the metal detector. Each checkpoint either lets you through or stops you. If any step fails, you don't reach the gate. A Chain of Responsibility passes a request along a chain of handlers — each one either processes it or rejects it.
+Imagine the checkout process at a pet store. First the cashier scans your loyalty card, then checks if any age-restricted products (like certain medications) require ID verification, then processes the payment. Each step either passes you through or stops the transaction. If any step fails, you don't complete the purchase. A Chain of Responsibility passes a request along a chain of handlers — each one either processes it or rejects it.
 
 **In Petopia:**
 Every protected route passes through two middleware functions chained in sequence: `protect` then `adminCheck`. `protect` verifies the JWT and attaches `req.user`. If that passes, `adminCheck` checks that `req.user.role === 'admin'`. Only if both pass does the request reach the route handler.
@@ -114,7 +114,7 @@ Authentication and authorisation are separate concerns. Splitting them into two 
 ### 5. Observer — `backend/models/User.js`
 
 **What is it?**
-Imagine a motion sensor light: you don't manually turn the light on every time someone walks in — the sensor watches for movement and reacts automatically. An Observer watches for an event and triggers a reaction without the caller having to think about it.
+Imagine a pet store's automatic reorder system. You don't manually check stock levels every day — the system watches inventory, and the moment a product drops below the reorder threshold, it automatically places a supplier order. Nobody has to remember to trigger it; the system reacts on its own. An Observer watches for an event and triggers a reaction without the caller having to think about it.
 
 **In Petopia:**
 The User model registers a Mongoose `pre('save')` hook. Whenever a User document is saved — whether on registration or profile update — the hook automatically checks if the password field changed. If it did, it hashes the password with bcrypt before it ever reaches the database. The controller that calls `user.save()` never has to remember to hash the password.
