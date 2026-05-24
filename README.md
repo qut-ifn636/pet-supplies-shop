@@ -7,8 +7,8 @@ Admins can manage product categories and a product catalogue with full CRUD, rol
 
 ## 🌐 Public URL
 
-> **http://3.25.55.176**
-> *(defaults to port 80)*
+> **http://pet-supplies-shop-ALB-803410956.ap-southeast-2.elb.amazonaws.com**
+> *(served via AWS Application Load Balancer across two EC2 instances)*
 
 ---
 
@@ -125,7 +125,7 @@ This creates — and is safe to re-run (skips existing records):
 ```bash
 cd backend
 npm test
-# Expected: 24 passing
+# Expected: 26 passing
 ```
 
 Tests use Sinon stubs — no real database connection required.

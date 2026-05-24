@@ -1,6 +1,5 @@
 config:
-  # Replace REPLACE_WITH_ALB_DNS with the actual ALB DNS name after Task 6
-  target: 'http://REPLACE_WITH_ALB_DNS'
+  target: 'http://pet-supplies-shop-ALB-803410956.ap-southeast-2.elb.amazonaws.com'
   phases:
     - duration: 300
       arrivalRate: 1
