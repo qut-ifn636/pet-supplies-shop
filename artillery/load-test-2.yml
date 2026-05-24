@@ -1,0 +1,19 @@
+config:
+  # Replace REPLACE_WITH_ALB_DNS with the actual ALB DNS name after Task 6
+  target: 'http://REPLACE_WITH_ALB_DNS'
+  phases:
+    - duration: 300
+      arrivalRate: 1
+      rampTo: 200
+      name: Ramp 1 to 200 VU/s
+  http:
+    timeout: 10
+  ensure:
+    p99: 2000
+    maxErrorRate: 1
+
+scenarios:
+  - name: Health check
+    flow:
+      - get:
+          url: /api/health
