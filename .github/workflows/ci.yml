@@ -50,9 +50,16 @@ jobs:
         with:
           clean: false  # Preserve backend/.env so INSTANCE_ID is not erased
 
-      - name: Verify .env exists
+      - name: Write .env
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: ${{ secrets.PORT }}
         run: |
-          test -f backend/.env || (echo "ERROR: backend/.env missing on runner" && exit 1)
+          echo "MONGO_URI=$MONGO_URI" > backend/.env
+          echo "JWT_SECRET=$JWT_SECRET" >> backend/.env
+          echo "PORT=$PORT" >> backend/.env
+          echo "INSTANCE_ID=${{ matrix.instance }}" >> backend/.env
 
       - name: Install backend dependencies
         working-directory: ./backend
