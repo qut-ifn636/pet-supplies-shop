@@ -38,6 +38,7 @@ jobs:
   deploy:
     name: Deploy (${{ matrix.instance }})
     needs: test
+    environment: MONGO_URI
     strategy:
       fail-fast: false
       matrix:
