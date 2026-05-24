@@ -37,25 +37,23 @@ Admins can manage product categories and a product catalogue with full CRUD, rol
 
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/<your-username>/<your-repo>.git](https://github.com/raytf/qut_ifn636_pet-supplies-shop.git)
+git clone https://github.com/raytf/qut_ifn636_pet-supplies-shop.git
 cd qut_ifn636_pet-supplies-shop
 
 # 2. Configure backend environment variables
 cp backend/.env.example backend/.env
 # Edit backend/.env — fill in MONGO_URI and JWT_SECRET
 
-# 3. Install and run the backend
-cd backend
-npm install
-npm run dev       # starts on http://localhost:5001
+# 3. Install all dependencies (root + backend + frontend)
+npm run install-all
 
-# 4. Seed the database (separate terminal)
-npm run seed
+# 4. Seed the database
+npm run seed --prefix backend
 
-# 5. Install and run the frontend (separate terminal)
-cd ../frontend
-npm install
-npm start         # starts on http://localhost:3000
+# 5. Start both backend and frontend
+npm run dev
+# Backend:  http://localhost:5001
+# Frontend: http://localhost:3000
 ```
 
 ---
@@ -102,6 +100,14 @@ This creates — and is safe to re-run (skips existing records):
 
 ## 📜 Available Scripts
 
+### Root (run from project root)
+
+| Command               | Description                                        |
+|-----------------------|----------------------------------------------------|
+| `npm run install-all` | Install dependencies for root, backend, and frontend |
+| `npm run dev`         | Start backend (nodemon) + frontend concurrently    |
+| `npm start`           | Start backend (production) + frontend concurrently |
+
 ### Backend (`cd backend`)
 
 | Command         | Description                        |
@@ -113,10 +119,10 @@ This creates — and is safe to re-run (skips existing records):
 
 ### Frontend (`cd frontend`)
 
-| Command       | Description                              |
-|---------------|------------------------------------------|
-| `npm start`   | Start React dev server (port 3000)       |
-| `npm run build` | Build optimised production bundle      |
+| Command           | Description                             |
+|-------------------|-----------------------------------------|
+| `npm start`       | Start React dev server (port 3000)      |
+| `npm run build`   | Build optimised production bundle       |
 
 ---
 
