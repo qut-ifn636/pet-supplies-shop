@@ -51,7 +51,8 @@ jobs:
           clean: false  # Preserve backend/.env so INSTANCE_ID is not erased
 
       - name: Verify .env exists
-        run: test -f backend/.env || (echo "ERROR: backend/.env missing on runner" && exit 1)
+        run: |
+          test -f backend/.env || (echo "ERROR: backend/.env missing on runner" && exit 1)
 
       - name: Install backend dependencies
         working-directory: ./backend
