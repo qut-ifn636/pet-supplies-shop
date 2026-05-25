@@ -37,4 +37,13 @@ const axiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Unwrap ResponseFactory envelope { success, message, data } transparently.
+// Endpoints that return raw data are passed through unchanged.
+axiosInstance.interceptors.response.use((response) => {
+  if (response.data && typeof response.data === 'object' && 'success' in response.data && 'data' in response.data) {
+    return { ...response, data: response.data.data };
+  }
+  return response;
+});
+
 export default axiosInstance;

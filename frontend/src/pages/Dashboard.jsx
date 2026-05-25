@@ -33,7 +33,7 @@ const Dashboard = () => {
         setStats({
           products:   productsRes.data.length,
           categories: categoriesRes.data.length,
-          users:      usersRes.data.data.length,
+          users:      usersRes.data.length,
         });
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load dashboard data.');

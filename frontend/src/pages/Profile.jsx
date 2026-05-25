@@ -17,8 +17,8 @@ const Profile = () => {
         const res = await axiosInstance.get('/api/auth/profile', {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        setFormData({ name: res.data.data.name, email: res.data.data.email });
-        setMeta({ role: res.data.data.role, createdAt: res.data.data.createdAt });
+        setFormData({ name: res.data.name, email: res.data.email });
+        setMeta({ role: res.data.role, createdAt: res.data.createdAt });
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load profile.');
       } finally {
