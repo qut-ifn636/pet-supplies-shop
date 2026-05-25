@@ -138,10 +138,14 @@ If password hashing lived in the controller, every place that saves a user (regi
 ### Encapsulation — `backend/repositories/UserRepository.js`
 
 **What is it?**
-Encapsulation means bundling data and the operations that work on it into one unit, and hiding the internal details from the outside world. Think of a car: you press the accelerator without knowing how the engine works internally.
+Encapsulation means bundling data and the methods that operate on it into one unit, and protecting that internal state from the outside. Think of a vending machine: the money, inventory, and dispensing mechanism are all locked inside one box. You interact through the buttons on the front — you can't reach in and rearrange the cans yourself.
+
+The emphasis is on **what lives inside the class**: data and behaviour are co-located, and internal state can't be directly modified by callers.
+
+> **Encapsulation vs Abstraction:** Encapsulation is the *mechanism* — it's about how a class protects and organises its internals. Abstraction is the *outcome* — it's about what a simplified interface looks like to the caller. A class can encapsulate without providing a particularly clean interface, and you can abstract behind a function without bundling state at all.
 
 **In Petopia:**
-`UserRepository` hides all Mongoose query syntax inside a class. A controller that needs users doesn't know whether they come from `.find()`, `.findOne()`, or a raw query — it just calls `userRepo.findAllWithoutPassword()`. The internal implementation is encapsulated behind a clean method name.
+`UserRepository` owns the `userModel` instance and all Mongoose query logic. Controllers can't directly call `.find()` or `.select()` on the model — those details are sealed inside the class. The controller is forced to go through the repository's public methods.
 
 ```js
 // Controller only sees the intention, not the query
@@ -153,21 +157,31 @@ async findAllWithoutPassword() {
 }
 ```
 
+**Why it matters:**
+If the query needs to change (e.g. also excluding `refreshToken`), the fix is in one place inside the class. No controller needs to be updated. Callers are protected from the change because they never depended on the internal details.
+
 ---
 
 ### Abstraction — `backend/controllers/` using `ResponseFactory`
 
 **What is it?**
-Abstraction means exposing only what's necessary and hiding complexity. Think of a TV remote: you press "Volume Up" without knowing anything about the electronics inside.
+Abstraction means exposing only what a caller needs and hiding everything else behind a simple interface. Think of a TV remote: the "Volume Up" button is the interface. The infrared encoding, signal timing, and circuit board are all hidden — and irrelevant to you.
+
+The emphasis is on **what the caller sees**: a clean, intention-revealing interface that lets you say *what* you want without specifying *how* to achieve it.
+
+> **Abstraction vs Encapsulation:** Abstraction is the *outcome* — a simplified interface. Encapsulation is the *mechanism* — bundling and protecting internals inside a class. `ResponseFactory` abstracts response construction; `UserRepository` encapsulates query logic. Both hide complexity, but from different angles: abstraction is a design goal, encapsulation is an implementation technique that often achieves it.
 
 **In Petopia:**
-Controllers use `ResponseFactory.ok()` and `ResponseFactory.notFound()` without knowing how the response object is built. The factory's internal logic (adding `timestamp`, `statusCode`, `success` flag) is completely hidden. Controllers express *what* they want, not *how* to build it.
+Controllers use `ResponseFactory.ok()` and `ResponseFactory.notFound()` without knowing how the response object is built. The factory handles adding `timestamp`, `statusCode`, and `success` flag internally. Controllers express *what* outcome they want, not *how* to construct it.
 
 ```js
 // Controller expresses intent clearly
 return res.status(200).json(ResponseFactory.ok(product));
 // Controller has no idea how that object was constructed
 ```
+
+**Why it matters:**
+If the response shape ever needs to change (e.g. adding a `requestId` field for tracing), the change happens only inside `ResponseFactory`. Every controller that calls `ResponseFactory.ok()` automatically gets the new shape — none of them need to be touched.
 
 ---
 
