@@ -64,6 +64,25 @@ All frontend source lives in `frontend/src/`.
 
 ---
 
+## Axios Instance (`axiosConfig.jsx`)
+
+All API calls use the shared `axiosInstance` (never raw `axios`). It is configured with:
+
+- **`baseURL: ''`** — uses relative URLs so requests go to the same origin as the frontend, letting nginx/ALB proxy `/api` to the backend regardless of environment.
+- **Response interceptor** — auth endpoints (`/api/auth/*`) return a `ResponseFactory` envelope `{ success, message, data, timestamp, statusCode }`. The interceptor detects this shape and unwraps it, replacing `response.data` with the inner `data` payload. Components always read `res.data` uniformly; no call site needs to know whether an endpoint uses the envelope or returns raw data.
+
+```js
+// Detected shape → unwrapped transparently
+{ success: true, message: '...', data: { token, ... } }  →  res.data = { token, ... }
+
+// Raw shape (products, categories) → passed through unchanged
+[{ _id, name, ... }]  →  res.data = [{ _id, name, ... }]
+```
+
+If you add a new endpoint that uses `ResponseFactory`, the interceptor handles it automatically with no frontend changes needed.
+
+---
+
 ## Auth Flow
 
 1. User lands on `/` → redirected to `/dashboard` by React Router
