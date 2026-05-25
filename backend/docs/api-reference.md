@@ -16,7 +16,21 @@ Tokens are returned by the `/register` and `/login` endpoints and expire after 3
 
 ## Auth Routes (`/api/auth`)
 
-| Method | Endpoint   | Auth  | Body / Query Params                    | Success Response                              |
+Auth endpoints use `ResponseFactory` and return a standard envelope:
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": { ... },
+  "timestamp": "2026-01-01T00:00:00.000Z",
+  "statusCode": 200
+}
+```
+
+The `data` payload for each endpoint is shown in the table below. The frontend axios instance (`axiosConfig.jsx`) unwraps this envelope automatically so components receive `data` directly via `res.data`.
+
+| Method | Endpoint   | Auth  | Body / Query Params                    | `data` payload                                |
 |--------|------------|-------|----------------------------------------|-----------------------------------------------|
 | POST   | /register  | None  | `{ name, email, password }`            | `{ id, name, email, token }` (201)            |
 | POST   | /login     | None  | `{ email, password }`                  | `{ id, name, email, role, token }`            |
@@ -24,7 +38,7 @@ Tokens are returned by the `/register` and `/login` endpoints and expire after 3
 | PUT    | /profile   | User  | `{ name?, email? }`                    | `{ id, name, email, role, token }`            |
 | GET    | /users     | Admin | —                                      | `[{ _id, name, email, role, createdAt }]`     |
 
-**Error responses:** `{ message: '...' }` with appropriate status (400, 401, 403, 404, 500)
+**Error responses:** `{ success: false, message: '...', errors: null, timestamp, statusCode }` with appropriate status (400, 401, 403, 404, 500)
 
 ---
 
