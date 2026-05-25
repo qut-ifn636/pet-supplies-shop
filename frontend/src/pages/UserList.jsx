@@ -21,7 +21,7 @@ const UserList = () => {
         const res = await axiosInstance.get('/api/auth/users', {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        setUsers(res.data);
+        setUsers(res.data.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load users.');
       } finally {
