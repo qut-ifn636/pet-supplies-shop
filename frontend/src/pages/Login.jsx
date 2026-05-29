@@ -4,7 +4,7 @@ import axiosInstance from '../axiosConfig';
 import { useForm } from '../hooks/useForm';
 
 const Login = () => {
-  const { formData, setFormData, error, setError, loading, setLoading } = useForm({ email: '', password: '' });
+  const { formData, setFormData, error, setError, loading, setLoading, handleChange } = useForm({ email: '', password: '' });
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -35,17 +35,19 @@ const Login = () => {
 
         <input
           type="email"
+          name="email"
           placeholder="Email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
           required
         />
         <input
           type="password"
+          name="password"
           placeholder="Password"
           value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
           required
         />
