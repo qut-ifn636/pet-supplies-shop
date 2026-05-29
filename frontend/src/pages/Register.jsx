@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../axiosConfig';
+import { useForm } from '../hooks/useForm';
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { formData, setFormData, error, setError, loading, setLoading, handleChange } = useForm({ name: '', email: '', password: '' });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -34,25 +32,28 @@ const Register = () => {
 
         <input
           type="text"
+          name="name"
           placeholder="Name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
           required
         />
         <input
           type="email"
+          name="email"
           placeholder="Email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
           required
         />
         <input
           type="password"
+          name="password"
           placeholder="Password"
           value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
           required
         />

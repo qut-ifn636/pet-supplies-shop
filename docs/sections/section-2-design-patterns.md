@@ -25,7 +25,7 @@ This section demonstrates that you understand and can apply object-oriented desi
 |---|---|---|
 | Encapsulation | `repositories/UserRepository.js` | `.findAllWithoutPassword()` hides `.find().select('-password')` from callers |
 | Abstraction | `controllers/` + `responseFactory.js` | Controllers call `ResponseFactory.ok(data)` without knowing how the object is built |
-| Inheritance | `models/*.js` | Every model extends Mongoose's base `Model` — gets `.save()`, `.find()`, `.findById()` for free |
+| Inheritance | `repositories/BaseRepository.js` | `UserRepository`, `ProductRepository`, `CategoryRepository` all extend `BaseRepository` — inherit `findById`, `create`, `save`, `deleteById` for free |
 | Polymorphism | `responseFactory.js` | `.ok()`, `.created()`, `.notFound()` share the same method interface but produce different status codes |
 
 ## Key Talking Points for the Demo

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import { useForm } from '../hooks/useForm';
 
 /**
  * Reusable form for creating and editing a product.
@@ -12,7 +13,7 @@ import axiosInstance from '../axiosConfig';
 const ProductForm = ({ product, onSubmit, loading }) => {
   const { user } = useAuth();
 
-  const [formData, setFormData] = useState({
+  const { formData, setFormData, error, setError, handleChange } = useForm({
     name: '',
     description: '',
     price: '',
@@ -22,9 +23,7 @@ const ProductForm = ({ product, onSubmit, loading }) => {
   });
   const [categories, setCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  // Pre-populate form when editing an existing product
   useEffect(() => {
     if (product) {
       setFormData({
@@ -38,7 +37,6 @@ const ProductForm = ({ product, onSubmit, loading }) => {
     }
   }, [product]);
 
-  // Fetch available categories for the dropdown
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -54,10 +52,6 @@ const ProductForm = ({ product, onSubmit, loading }) => {
     };
     fetchCategories();
   }, [user]);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();

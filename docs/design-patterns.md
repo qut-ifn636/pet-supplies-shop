@@ -185,20 +185,35 @@ If the response shape ever needs to change (e.g. adding a `requestId` field for 
 
 ---
 
-### Inheritance — `backend/models/` extending Mongoose Schema
+### Inheritance — `backend/repositories/`
 
 **What is it?**
 Inheritance means a child class takes on the properties and behaviour of a parent. Think of a `Dog` class that inherits from `Animal` — it gets all of Animal's basic behaviour and adds its own.
 
 **In Petopia:**
-Every model (`User`, `Product`, `Category`) is created by calling `mongoose.model()` which produces a class that inherits from Mongoose's base `Model`. This gives every model built-in methods like `.save()`, `.find()`, `.findById()`, and `.populate()` without writing them. The schema definition extends this base with entity-specific fields and validation.
+`BaseRepository` defines the four methods every repository needs: `findById`, `create`, `save`, and `deleteById`. Each concrete repository (`UserRepository`, `ProductRepository`, `CategoryRepository`) calls `extends BaseRepository` and inherits these methods without rewriting them. Each subclass then adds only the domain-specific queries it needs — for example, `UserRepository` adds `findByEmail` and `findAllWithoutPassword`, while `ProductRepository` adds `findByIdWithCategory` and `countByCategory`.
 
 ```js
-// User inherits all Mongoose Model behaviour
-module.exports = mongoose.model('User', userSchema);
-// Product inherits same behaviour with different schema
-module.exports = mongoose.model('Product', productSchema);
+// backend/repositories/BaseRepository.js
+class BaseRepository {
+    constructor(model) { this.model = model; }
+    async findById(id)   { return this.model.findById(id); }
+    async create(data)   { return this.model.create(data); }
+    async save(doc)      { return doc.save(); }
+    async deleteById(id) { return this.model.findByIdAndDelete(id); }
+}
+
+// backend/repositories/UserRepository.js
+class UserRepository extends BaseRepository {
+    constructor(userModel = User) { super(userModel); }
+    // inherits findById, create, save, deleteById
+    async findByEmail(email) { return this.model.findOne({ email }); }
+    async findAllWithoutPassword() { return this.model.find().select('-password'); }
+}
 ```
+
+**Why it matters:**
+Without `BaseRepository`, the same four method bodies appear identically in all three repository files. If `create` ever needed to change — for example, to add audit logging — the change would need to be made in three places. With inheritance, it is in one.
 
 ---
 
@@ -234,5 +249,5 @@ static ok(data, message = 'Request successful') {
 | Observer | `models/User.js` | Auto-hashes password before save, no controller involvement |
 | Encapsulation | `repositories/UserRepository.js` | Query internals hidden inside the class |
 | Abstraction | `controllers/` + `responseFactory.js` | Controllers express intent, not implementation |
-| Inheritance | `models/*.js` | All models inherit Mongoose's built-in query methods |
+| Inheritance | `repositories/BaseRepository.js` | Shared CRUD methods in one base class; subclasses add domain-specific queries |
 | Polymorphism | `responseFactory.js` | Same method interface, different status codes per context |

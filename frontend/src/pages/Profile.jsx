@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import { useForm } from '../hooks/useForm';
 
 const Profile = () => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({ name: '', email: '' });
+  const { formData, setFormData, error, setError, loading: saving, setLoading: setSaving, handleChange } = useForm({ name: '', email: '' });
   const [meta, setMeta] = useState({ role: '', createdAt: '' });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
@@ -63,16 +62,18 @@ const Profile = () => {
 
         <input
           type="text"
+          name="name"
           placeholder="Name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
         <input
           type="email"
+          name="email"
           placeholder="Email"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={handleChange}
           className="w-full mb-4 p-2 border rounded"
         />
         <button
