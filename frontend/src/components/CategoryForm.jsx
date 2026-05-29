@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useForm } from '../hooks/useForm';
 
 /**
  * Inline form for adding or editing a category.
@@ -9,10 +10,8 @@ import { useState, useEffect } from 'react';
  *   - loading: boolean — disables the submit button while saving
  */
 const CategoryForm = ({ category, onSubmit, onCancel, loading }) => {
-  const [formData, setFormData] = useState({ name: '', description: '' });
-  const [error, setError] = useState('');
+  const { formData, setFormData, error, setError } = useForm({ name: '', description: '' });
 
-  // Pre-populate when editing
   useEffect(() => {
     if (category) {
       setFormData({ name: category.name || '', description: category.description || '' });
