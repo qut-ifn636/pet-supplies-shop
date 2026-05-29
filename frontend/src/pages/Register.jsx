@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../axiosConfig';
+import { useForm } from '../hooks/useForm';
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { formData, setFormData, error, setError, loading, setLoading } = useForm({ name: '', email: '', password: '' });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
