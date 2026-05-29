@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
+import { useForm } from '../hooks/useForm';
 
 const Profile = () => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({ name: '', email: '' });
+  const { formData, setFormData, error, setError, loading: saving, setLoading: setSaving } = useForm({ name: '', email: '' });
   const [meta, setMeta] = useState({ role: '', createdAt: '' });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
