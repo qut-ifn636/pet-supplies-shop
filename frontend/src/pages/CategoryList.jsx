@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 import CategoryForm from '../components/CategoryForm';
+import Spinner from '../components/Spinner';
 
 const CategoryList = () => {
   const { user } = useAuth();
@@ -10,7 +11,7 @@ const CategoryList = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null); // category object being edited
+  const [editingCategory, setEditingCategory] = useState(null);
 
   const authHeader = useMemo(
     () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
@@ -73,79 +74,90 @@ const CategoryList = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Categories</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-teal-900">Categories</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Organise products into categories</p>
+        </div>
         {!showAddForm && !editingCategory && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-600 transition-colors"
           >
             + Add Category
           </button>
         )}
       </div>
 
-      {error && <p className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded p-2">{error}</p>}
+      {error && <p className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 text-sm">{error}</p>}
 
       {showAddForm && (
-        <CategoryForm
-          onSubmit={handleAdd}
-          onCancel={() => setShowAddForm(false)}
-          loading={saving}
-        />
+        <CategoryForm onSubmit={handleAdd} onCancel={() => setShowAddForm(false)} loading={saving} />
       )}
 
-      {loading && <p className="text-gray-500">Loading categories…</p>}
+      {loading && <Spinner label="Loading categories…" />}
 
       {!loading && (
         categories.length === 0 && !showAddForm ? (
-          <p className="text-gray-500">No categories yet. Add one above.</p>
+          <div className="text-center py-16 bg-white border border-teal-100 rounded-xl shadow-sm">
+            <div className="text-5xl mb-3">🏷️</div>
+            <p className="text-base font-semibold text-teal-900 mb-1">No categories yet</p>
+            <p className="text-sm text-slate-500 mb-5">Add your first category to start organising products.</p>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-teal-600 transition-colors"
+            >
+              + Add Category
+            </button>
+          </div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-sm text-gray-700">
-                <th className="p-3 border-b">Name</th>
-                <th className="p-3 border-b">Description</th>
-                <th className="p-3 border-b">Created</th>
-                <th className="p-3 border-b">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((cat) => (
-                <tr key={cat._id} className="hover:bg-gray-50 text-sm">
-                  {editingCategory?._id === cat._id ? (
-                    <td colSpan={4} className="p-3 border-b">
-                      <CategoryForm
-                        category={cat}
-                        onSubmit={handleUpdate}
-                        onCancel={() => setEditingCategory(null)}
-                        loading={saving}
-                      />
-                    </td>
-                  ) : (
-                    <>
-                      <td className="p-3 border-b font-medium">{cat.name}</td>
-                      <td className="p-3 border-b text-gray-600">{cat.description || '—'}</td>
-                      <td className="p-3 border-b text-gray-500">{new Date(cat.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3 border-b flex gap-2">
-                        <button
-                          onClick={() => { setEditingCategory(cat); setShowAddForm(false); }}
-                          className="bg-yellow-400 text-white px-3 py-1 rounded hover:bg-yellow-500 text-xs"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(cat._id, cat.name)}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700 text-xs"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </>
-                  )}
+          <div className="bg-white border border-teal-100 rounded-xl shadow-sm overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-teal-50 border-b border-teal-100">
+                  <th className="px-4 py-3 text-xs font-semibold text-teal-700 uppercase tracking-wide">Name</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-teal-700 uppercase tracking-wide">Description</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-teal-700 uppercase tracking-wide">Created</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-teal-700 uppercase tracking-wide">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {categories.map((cat, i) => (
+                  <tr key={cat._id} className={`border-b border-teal-50 ${i % 2 === 1 ? 'bg-teal-50/30' : ''}`}>
+                    {editingCategory?._id === cat._id ? (
+                      <td colSpan={4} className="px-4 py-3 bg-teal-50/60">
+                        <CategoryForm
+                          category={cat}
+                          onSubmit={handleUpdate}
+                          onCancel={() => setEditingCategory(null)}
+                          loading={saving}
+                        />
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 text-sm font-medium text-teal-900">{cat.name}</td>
+                        <td className="px-4 py-3 text-sm text-slate-500">{cat.description || '—'}</td>
+                        <td className="px-4 py-3 text-sm text-slate-400">{new Date(cat.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 flex gap-2">
+                          <button
+                            onClick={() => { setEditingCategory(cat); setShowAddForm(false); }}
+                            className="bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-md text-xs font-semibold hover:bg-teal-100 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(cat._id, cat.name)}
+                            className="bg-rose-50 text-rose-600 border border-rose-200 px-3 py-1 rounded-md text-xs font-semibold hover:bg-rose-100 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )
       )}
     </div>

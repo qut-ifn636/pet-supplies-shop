@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 import { useForm } from '../hooks/useForm';
+import Spinner from '../components/Spinner';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -44,42 +45,64 @@ const Profile = () => {
     }
   };
 
-  if (loading) return <div className="text-center mt-20 text-gray-500">Loading profile…</div>;
+  if (loading) return (
+    <div className="flex justify-center mt-20">
+      <Spinner label="Loading profile…" />
+    </div>
+  );
+
+  const inputClass = 'w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent';
 
   return (
-    <div className="max-w-md mx-auto mt-20 px-4">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-1 text-center">Your Profile</h1>
-        <p className="text-center text-sm text-gray-500 mb-5">
-          Role: <span className="font-medium capitalize">{meta.role}</span>
-          {meta.createdAt && (
-            <> · Joined {new Date(meta.createdAt).toLocaleDateString()}</>
+    <div className="max-w-md mx-auto p-6 mt-6">
+      <form onSubmit={handleSubmit} className="bg-white border border-teal-100 rounded-xl shadow-sm p-6">
+        <h1 className="text-xl font-bold text-teal-900 mb-1">Your Profile</h1>
+
+        {/* Role + join date badges */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {meta.role && (
+            <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize">
+              {meta.role}
+            </span>
           )}
-        </p>
+          {meta.createdAt && (
+            <span className="bg-teal-50 text-teal-700 border border-teal-200 rounded-full px-2.5 py-0.5 text-xs font-medium">
+              Joined {new Date(meta.createdAt).toLocaleDateString()}
+            </span>
+          )}
+        </div>
 
-        {error   && <p className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded p-2 text-sm">{error}</p>}
-        {success && <p className="mb-4 text-green-600 bg-green-50 border border-green-200 rounded p-2 text-sm">{success}</p>}
+        {error   && <p className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 text-sm">{error}</p>}
+        {success && <p className="mb-4 text-green-700 bg-green-50 border border-green-200 rounded-lg p-3 text-sm">{success}</p>}
 
-        <input
-          type="text"
-          name="name"
-          placeholder="Name"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full mb-4 p-2 border rounded"
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          className="w-full mb-4 p-2 border rounded"
-        />
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-teal-900 mb-1" htmlFor="pr-name">Full name</label>
+          <input
+            id="pr-name"
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-teal-900 mb-1" htmlFor="pr-email">Email address</label>
+          <input
+            id="pr-email"
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={inputClass}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-teal-700 text-white py-2 rounded-lg text-sm font-semibold hover:bg-teal-600 disabled:opacity-50 transition-colors"
         >
           {saving ? 'Saving…' : 'Update Profile'}
         </button>
