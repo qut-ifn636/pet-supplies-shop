@@ -1,12 +1,10 @@
-import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../axiosConfig';
+import { useForm } from '../hooks/useForm';
 
 const Login = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { formData, setFormData, error, setError, loading, setLoading } = useForm({ email: '', password: '' });
   const { login } = useAuth();
   const navigate = useNavigate();
 
