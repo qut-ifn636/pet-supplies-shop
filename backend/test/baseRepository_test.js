@@ -49,7 +49,7 @@ describe('BaseRepository', () => {
             const result = await repo.save(fakeDoc);
 
             expect(fakeDoc.save.calledOnce).to.be.true;
-            expect(result._id).to.equal('abc123');
+            expect(result).to.deep.equal({ _id: 'abc123' });
         });
     });
 
