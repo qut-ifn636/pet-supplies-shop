@@ -37,7 +37,7 @@ const ProductForm = ({ product, onSubmit, loading }) => {
         imageUrl:    product.imageUrl || '',
       });
     }
-  }, [product]);
+  }, [product, setFormData]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,7 +53,7 @@ const ProductForm = ({ product, onSubmit, loading }) => {
       }
     };
     fetchCategories();
-  }, [user]);
+  }, [user, setError]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

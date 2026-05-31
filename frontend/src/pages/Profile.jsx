@@ -26,7 +26,7 @@ const Profile = () => {
       }
     };
     if (user) fetchProfile();
-  }, [user]);
+  }, [user, setFormData, setError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

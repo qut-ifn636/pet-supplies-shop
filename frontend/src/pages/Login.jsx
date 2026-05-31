@@ -4,7 +4,7 @@ import axiosInstance from '../axiosConfig';
 import { useForm } from '../hooks/useForm';
 
 const Login = () => {
-  const { formData, setFormData, error, setError, loading, setLoading, handleChange } = useForm({ email: '', password: '' });
+  const { formData, error, setError, loading, setLoading, handleChange } = useForm({ email: '', password: '' });
   const { login } = useAuth();
   const navigate = useNavigate();
 

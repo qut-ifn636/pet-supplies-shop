@@ -3,7 +3,7 @@ import axiosInstance from '../axiosConfig';
 import { useForm } from '../hooks/useForm';
 
 const Register = () => {
-  const { formData, setFormData, error, setError, loading, setLoading, handleChange } = useForm({ name: '', email: '', password: '' });
+  const { formData, error, setError, loading, setLoading, handleChange } = useForm({ name: '', email: '', password: '' });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {

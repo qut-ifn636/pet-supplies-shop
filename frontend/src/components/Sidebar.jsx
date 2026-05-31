@@ -10,7 +10,7 @@ const navLinks = [
 ];
 
 const Sidebar = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
