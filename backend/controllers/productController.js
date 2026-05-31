@@ -1,5 +1,6 @@
 const productRepository = require('../repositories/ProductRepository');
 const categoryRepository = require('../repositories/CategoryRepository');
+const ResponseFactory = require('../responseFactory');
 
 /**
  * @desc  Get all products with optional search and category filter.
@@ -24,9 +25,9 @@ const getProducts = async (req, res) => {
 
         const products = await productRepository.findAll(filter);
 
-        res.json(products);
+        res.json(ResponseFactory.ok(products));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -39,11 +40,11 @@ const getProduct = async (req, res) => {
     try {
         const product = await productRepository.findByIdWithCategory(req.params.id);
         if (!product) {
-            return res.status(404).json({ message: 'Product not found' });
+            return res.status(404).json(ResponseFactory.notFound('Product not found'));
         }
-        res.json(product);
+        res.json(ResponseFactory.ok(product));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -57,26 +58,30 @@ const createProduct = async (req, res) => {
 
     // Validate required fields before hitting the database
     if (!name || price === undefined || !category) {
-        return res.status(400).json({ message: 'Name, price, and category are required' });
+        return res.status(400).json(
+            ResponseFactory.badRequest('Name, price, and category are required')
+        );
     }
     if (price < 0) {
-        return res.status(400).json({ message: 'Price cannot be negative' });
+        return res.status(400).json(ResponseFactory.badRequest('Price cannot be negative'));
     }
 
     try {
         // Confirm the referenced category actually exists
         const categoryExists = await categoryRepository.findById(category);
         if (!categoryExists) {
-            return res.status(400).json({ message: 'Referenced category does not exist' });
+            return res.status(400).json(
+                ResponseFactory.badRequest('Referenced category does not exist')
+            );
         }
 
         const product = await productRepository.create({ name, description, price, category, stock, imageUrl });
 
         // Return the product with category name populated
         const populated = await productRepository.populateCategory(product);
-        res.status(201).json(populated);
+        res.status(201).json(ResponseFactory.created(populated));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -91,14 +96,16 @@ const updateProduct = async (req, res) => {
     try {
         const product = await productRepository.findById(req.params.id);
         if (!product) {
-            return res.status(404).json({ message: 'Product not found' });
+            return res.status(404).json(ResponseFactory.notFound('Product not found'));
         }
 
         // If a new category is supplied, confirm it exists before saving
         if (category && category.toString() !== product.category.toString()) {
             const categoryExists = await categoryRepository.findById(category);
             if (!categoryExists) {
-                return res.status(400).json({ message: 'Referenced category does not exist' });
+                return res.status(400).json(
+                    ResponseFactory.badRequest('Referenced category does not exist')
+                );
             }
         }
 
@@ -112,9 +119,9 @@ const updateProduct = async (req, res) => {
 
         const updatedProduct = await productRepository.save(product);
         const populated = await productRepository.populateCategory(updatedProduct);
-        res.json(populated);
+        res.json(ResponseFactory.ok(populated, 'Product updated successfully'));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -127,13 +134,13 @@ const deleteProduct = async (req, res) => {
     try {
         const product = await productRepository.findById(req.params.id);
         if (!product) {
-            return res.status(404).json({ message: 'Product not found' });
+            return res.status(404).json(ResponseFactory.notFound('Product not found'));
         }
 
         await productRepository.deleteById(req.params.id);
-        res.json({ message: 'Product deleted successfully' });
+        res.json(ResponseFactory.ok(null, 'Product deleted successfully'));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 

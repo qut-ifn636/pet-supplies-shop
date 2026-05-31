@@ -1,262 +1,208 @@
 const chai = require('chai');
 const sinon = require('sinon');
-const mongoose = require('mongoose');
 const { expect } = chai;
 
-const Product = require('../models/Product');
-const Category = require('../models/Category');
-const { getProducts, createProduct, deleteProduct, getProduct, updateProduct } = require('../controllers/productController');
+const productRepository = require('../repositories/ProductRepository');
+const categoryRepository = require('../repositories/CategoryRepository');
+const {
+    getProducts,
+    getProduct,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+} = require('../controllers/productController');
 
-// Helper to build a chainable stub for Product.find().populate().sort()
-const buildFindChain = (resolvedValue) => {
-    const sortStub    = sinon.stub().resolves(resolvedValue);
-    const populateStub = sinon.stub().returns({ sort: sortStub });
-    return { stub: sinon.stub(Product, 'find').returns({ populate: populateStub }), sortStub, populateStub };
-};
+// Helper: grab the payload passed to res.json on the first call
+const payloadOf = (res) => res.json.getCall(0).args[0];
 
-// ---------------------------------------------------------------------------
-// getProducts
-// ---------------------------------------------------------------------------
-describe('getProducts', () => {
-    it('should return all products with status 200', async () => {
-        // 1. Stub
-        const fakeProducts = [
-            { _id: new mongoose.Types.ObjectId(), name: 'Dog Food', price: 29.99, category: { name: 'Dogs' } },
-        ];
-        const { stub } = buildFindChain(fakeProducts);
+describe('Product Controller', () => {
+    afterEach(() => sinon.restore());
 
-        // 2. Mock req/res
-        const req = { query: {} };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+    // ---------- getProducts ----------
+    describe('getProducts', () => {
+        it('returns all products with a 200 (no filter)', async () => {
+            const products = [{ name: 'Dog Food' }, { name: 'Cat Toy' }];
+            sinon.stub(productRepository, 'findAll').resolves(products);
 
-        // 3. Call
-        await getProducts(req, res);
+            const req = { query: {} };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 4. Assert
-        expect(res.status.called).to.be.false;
-        expect(res.json.calledOnce).to.be.true;
-        expect(res.json.calledWith(fakeProducts)).to.be.true;
+            await getProducts(req, res);
 
-        // 5. Restore
-        stub.restore();
+            expect(productRepository.findAll.calledOnce).to.be.true;
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', true);
+            expect(payload.data).to.deep.equal(products);
+        });
+
+        it('passes a regex search filter when ?search= is provided', async () => {
+            sinon.stub(productRepository, 'findAll').resolves([]);
+
+            const req = { query: { search: 'dog' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
+
+            await getProducts(req, res);
+
+            const filterArg = productRepository.findAll.getCall(0).args[0];
+            expect(filterArg.name).to.deep.equal({ $regex: 'dog', $options: 'i' });
+        });
+
+        it('returns a 500 envelope when the repository throws', async () => {
+            sinon.stub(productRepository, 'findAll').rejects(new Error('db down'));
+
+            const req = { query: {} };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
+
+            await getProducts(req, res);
+
+            expect(res.status.calledWith(500)).to.be.true;
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', false);
+            expect(payload).to.have.property('message', 'db down');
+        });
     });
 
-    it('should apply search filter when ?search= is provided', async () => {
-        // 1. Stub
-        const { stub } = buildFindChain([]);
+    // ---------- getProduct ----------
+    describe('getProduct', () => {
+        it('returns a product when found', async () => {
+            const product = { _id: 'p1', name: 'Dog Food' };
+            sinon.stub(productRepository, 'findByIdWithCategory').resolves(product);
 
-        // 2. Mock req/res
-        const req = { query: { search: 'cat' } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+            const req = { params: { id: 'p1' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 3. Call
-        await getProducts(req, res);
+            await getProduct(req, res);
 
-        // 4. Assert — find was called with a regex filter on name
-        expect(stub.calledOnce).to.be.true;
-        const filterArg = stub.args[0][0];
-        expect(filterArg).to.have.property('name');
-        expect(filterArg.name.$regex).to.equal('cat');
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', true);
+            expect(payload.data).to.deep.equal(product);
+        });
 
-        // 5. Restore
-        stub.restore();
+        it('returns 404 when the product is missing', async () => {
+            sinon.stub(productRepository, 'findByIdWithCategory').resolves(null);
+
+            const req = { params: { id: 'missing' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
+
+            await getProduct(req, res);
+
+            expect(res.status.calledWith(404)).to.be.true;
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', false);
+            expect(payload).to.have.property('message', 'Product not found');
+        });
     });
 
-    it('should return 500 if a database error occurs', async () => {
-        // 1. Stub — make the chain throw at sort
-        const sortStub     = sinon.stub().throws(new Error('DB Error'));
-        const populateStub = sinon.stub().returns({ sort: sortStub });
-        const findStub     = sinon.stub(Product, 'find').returns({ populate: populateStub });
+    // ---------- createProduct ----------
+    describe('createProduct', () => {
+        it('creates a product and returns 201', async () => {
+            const created = { _id: 'p1', name: 'Dog Food', price: 10 };
+            sinon.stub(categoryRepository, 'findById').resolves({ _id: 'cat1' });
+            sinon.stub(productRepository, 'create').resolves(created);
+            sinon.stub(productRepository, 'populateCategory').resolves(created);
 
-        // 2. Mock req/res
-        const req = { query: {} };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+            const req = { body: { name: 'Dog Food', price: 10, category: 'cat1' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 3. Call
-        await getProducts(req, res);
+            await createProduct(req, res);
 
-        // 4. Assert
-        expect(res.status.calledWith(500)).to.be.true;
-        expect(res.json.calledWithMatch({ message: 'DB Error' })).to.be.true;
+            expect(res.status.calledWith(201)).to.be.true;
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', true);
+            expect(payload.data).to.deep.equal(created);
+        });
 
-        // 5. Restore
-        findStub.restore();
-    });
-});
+        it('returns 400 when required fields are missing', async () => {
+            const req = { body: { name: 'Incomplete' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-// ---------------------------------------------------------------------------
-// getProduct
-// ---------------------------------------------------------------------------
-describe('getProduct', () => {
-    it('should return 404 if product is not found', async () => {
-        // 1. Stub
-        const populateStub = sinon.stub().resolves(null);
-        const findStub = sinon.stub(Product, 'findById').returns({ populate: populateStub });
+            await createProduct(req, res);
 
-        // 2. Mock req/res
-        const req = { params: { id: new mongoose.Types.ObjectId().toString() } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+            expect(res.status.calledWith(400)).to.be.true;
+            expect(payloadOf(res)).to.have.property('success', false);
+        });
 
-        // 3. Call
-        await getProduct(req, res);
+        it('returns 400 when the price is negative', async () => {
+            const req = { body: { name: 'Dog Food', price: -5, category: 'cat1' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 4. Assert
-        expect(res.status.calledWith(404)).to.be.true;
-        expect(res.json.calledWith({ message: 'Product not found' })).to.be.true;
+            await createProduct(req, res);
 
-        // 5. Restore
-        findStub.restore();
-    });
-});
+            expect(res.status.calledWith(400)).to.be.true;
+            expect(payloadOf(res)).to.have.property('message', 'Price cannot be negative');
+        });
 
-// ---------------------------------------------------------------------------
-// createProduct
-// ---------------------------------------------------------------------------
-describe('createProduct', () => {
-    it('should create a product and return 201', async () => {
-        // 1. Stub
-        const categoryId  = new mongoose.Types.ObjectId();
-        const fakeProduct = {
-            _id: new mongoose.Types.ObjectId(), name: 'Cat Toy', price: 9.99,
-            category: categoryId, stock: 10,
-            populate: sinon.stub().resolves({ name: 'Cat Toy', category: { name: 'Cats' } }),
-        };
-        const catStub     = sinon.stub(Category, 'findById').resolves({ _id: categoryId, name: 'Cats' });
-        const createStub  = sinon.stub(Product, 'create').resolves(fakeProduct);
+        it('returns 400 when the referenced category does not exist', async () => {
+            sinon.stub(categoryRepository, 'findById').resolves(null);
 
-        // 2. Mock req/res
-        const req = { body: { name: 'Cat Toy', price: 9.99, category: categoryId.toString(), stock: 10 } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+            const req = { body: { name: 'Dog Food', price: 10, category: 'badcat' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 3. Call
-        await createProduct(req, res);
+            await createProduct(req, res);
 
-        // 4. Assert
-        expect(res.status.calledWith(201)).to.be.true;
-        expect(res.json.calledOnce).to.be.true;
-
-        // 5. Restore
-        catStub.restore();
-        createStub.restore();
+            expect(res.status.calledWith(400)).to.be.true;
+            expect(payloadOf(res)).to.have.property('success', false);
+        });
     });
 
-    it('should return 400 if required fields are missing', async () => {
-        // 1. No stub needed — validation fires before DB
-        const req = { body: { name: 'Cat Toy' } }; // missing price and category
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+    // ---------- updateProduct ----------
+    describe('updateProduct', () => {
+        it('updates a product and returns the populated result', async () => {
+            const existing = { _id: 'p1', name: 'Old', category: { toString: () => 'cat1' } };
+            const updated = { _id: 'p1', name: 'New' };
+            sinon.stub(productRepository, 'findById').resolves(existing);
+            sinon.stub(productRepository, 'save').resolves(updated);
+            sinon.stub(productRepository, 'populateCategory').resolves(updated);
 
-        // 3. Call
-        await createProduct(req, res);
+            const req = { params: { id: 'p1' }, body: { name: 'New' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 4. Assert
-        expect(res.status.calledWith(400)).to.be.true;
-        expect(res.json.calledWith({ message: 'Name, price, and category are required' })).to.be.true;
+            await updateProduct(req, res);
+
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', true);
+            expect(payload.data).to.deep.equal(updated);
+        });
+
+        it('returns 404 when the product to update is missing', async () => {
+            sinon.stub(productRepository, 'findById').resolves(null);
+
+            const req = { params: { id: 'missing' }, body: { name: 'New' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
+
+            await updateProduct(req, res);
+
+            expect(res.status.calledWith(404)).to.be.true;
+            expect(payloadOf(res)).to.have.property('message', 'Product not found');
+        });
     });
 
-    it('should return 400 if the referenced category does not exist', async () => {
-        // 1. Stub — category lookup returns null
-        const catStub = sinon.stub(Category, 'findById').resolves(null);
+    // ---------- deleteProduct ----------
+    describe('deleteProduct', () => {
+        it('deletes a product and returns a success message', async () => {
+            sinon.stub(productRepository, 'findById').resolves({ _id: 'p1' });
+            sinon.stub(productRepository, 'deleteById').resolves();
 
-        // 2. Mock req/res
-        const req = { body: { name: 'Cat Toy', price: 9.99, category: new mongoose.Types.ObjectId().toString() } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+            const req = { params: { id: 'p1' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 3. Call
-        await createProduct(req, res);
+            await deleteProduct(req, res);
 
-        // 4. Assert
-        expect(res.status.calledWith(400)).to.be.true;
-        expect(res.json.calledWith({ message: 'Referenced category does not exist' })).to.be.true;
+            const payload = payloadOf(res);
+            expect(payload).to.have.property('success', true);
+            expect(payload).to.have.property('message', 'Product deleted successfully');
+        });
 
-        // 5. Restore
-        catStub.restore();
-    });
+        it('returns 404 when the product to delete is missing', async () => {
+            sinon.stub(productRepository, 'findById').resolves(null);
 
-    it('should return 500 if a database error occurs', async () => {
-        // 1. Stub
-        const catStub    = sinon.stub(Category, 'findById').resolves({ _id: new mongoose.Types.ObjectId() });
-        const createStub = sinon.stub(Product, 'create').throws(new Error('DB Error'));
+            const req = { params: { id: 'missing' } };
+            const res = { json: sinon.spy(), status: sinon.stub().returnsThis() };
 
-        // 2. Mock req/res
-        const req = { body: { name: 'Cat Toy', price: 9.99, category: new mongoose.Types.ObjectId().toString() } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
+            await deleteProduct(req, res);
 
-        // 3. Call
-        await createProduct(req, res);
-
-        // 4. Assert
-        expect(res.status.calledWith(500)).to.be.true;
-        expect(res.json.calledWithMatch({ message: 'DB Error' })).to.be.true;
-
-        // 5. Restore
-        catStub.restore();
-        createStub.restore();
-    });
-});
-
-// ---------------------------------------------------------------------------
-// deleteProduct
-// ---------------------------------------------------------------------------
-describe('deleteProduct', () => {
-    it('should return 404 if the product is not found', async () => {
-        // 1. Stub
-        const findStub = sinon.stub(Product, 'findById').resolves(null);
-
-        // 2. Mock req/res
-        const req = { params: { id: new mongoose.Types.ObjectId().toString() } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
-
-        // 3. Call
-        await deleteProduct(req, res);
-
-        // 4. Assert
-        expect(res.status.calledWith(404)).to.be.true;
-        expect(res.json.calledWith({ message: 'Product not found' })).to.be.true;
-
-        // 5. Restore
-        findStub.restore();
-    });
-
-    it('should return 500 if a database error occurs', async () => {
-        // 1. Stub
-        const findStub = sinon.stub(Product, 'findById').throws(new Error('DB Error'));
-
-        // 2. Mock req/res
-        const req = { params: { id: new mongoose.Types.ObjectId().toString() } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
-
-        // 3. Call
-        await deleteProduct(req, res);
-
-        // 4. Assert
-        expect(res.status.calledWith(500)).to.be.true;
-        expect(res.json.calledWithMatch({ message: 'DB Error' })).to.be.true;
-
-        // 5. Restore
-        findStub.restore();
-    });
-});
-
-// ---------------------------------------------------------------------------
-// updateProduct
-// ---------------------------------------------------------------------------
-describe('updateProduct', () => {
-    it('should return 404 if the product is not found', async () => {
-        // 1. Stub
-        const findStub = sinon.stub(Product, 'findById').resolves(null);
-
-        // 2. Mock req/res
-        const req = { params: { id: new mongoose.Types.ObjectId().toString() }, body: { name: 'Updated' } };
-        const res = { status: sinon.stub().returnsThis(), json: sinon.spy() };
-
-        // 3. Call
-        await updateProduct(req, res);
-
-        // 4. Assert
-        expect(res.status.calledWith(404)).to.be.true;
-        expect(res.json.calledWith({ message: 'Product not found' })).to.be.true;
-
-        // 5. Restore
-        findStub.restore();
+            expect(res.status.calledWith(404)).to.be.true;
+            expect(payloadOf(res)).to.have.property('message', 'Product not found');
+        });
     });
 });
