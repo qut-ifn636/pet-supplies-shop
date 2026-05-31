@@ -16,7 +16,7 @@ const CategoryForm = ({ category, onSubmit, onCancel, loading }) => {
     if (category) {
       setFormData({ name: category.name || '', description: category.description || '' });
     }
-  }, [category]);
+  }, [category, setFormData]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
