@@ -50,11 +50,14 @@ The `data` payload for each endpoint is shown in the table below. The frontend a
 | GET    | /:id     | Admin | —                            | `{ _id, name, description, createdAt }` |
 | POST   | /        | Admin | `{ name, description? }`     | `{ _id, name, description, createdAt }` (201) |
 | PUT    | /:id     | Admin | `{ name?, description? }`    | `{ _id, name, description, createdAt }` |
-| DELETE | /:id     | Admin | —                            | `{ message: 'Category deleted successfully' }` |
+| DELETE | /:id     | Admin | —                            | `null` (envelope `message`: `'Category deleted successfully'`) |
 
-**Error responses:** `{ message: '...' }` with appropriate status (400, 404, 500)
+Like the auth routes, category endpoints return the standard `ResponseFactory` envelope; the **Success Response** column above shows the `data` payload (unwrapped automatically by `axiosConfig.jsx`).
 
-- `POST` / `PUT` return **400** if `name` is missing or already taken (duplicate)
+**Error responses:** `{ success: false, message: '...', errors: null, timestamp, statusCode }` with appropriate status (400, 404, 409, 500)
+
+- `POST` returns **400** if `name` is missing
+- `POST` / `PUT` return **409** if a category with that name already exists
 - `DELETE` returns **400** if any products reference this category
 
 ---
@@ -67,12 +70,14 @@ The `data` payload for each endpoint is shown in the table below. The frontend a
 | GET    | /:id     | Admin | —                                                                      | `{ _id, name, description, price, category: { name }, stock, imageUrl, createdAt }` |
 | POST   | /        | Admin | `{ name, price, category, description?, stock?, imageUrl? }`           | same as GET /:id (201) |
 | PUT    | /:id     | Admin | `{ name?, description?, price?, category?, stock?, imageUrl? }`        | same as GET /:id |
-| DELETE | /:id     | Admin | —                                                                      | `{ message: 'Product deleted successfully' }` |
+| DELETE | /:id     | Admin | —                                                                      | `null` (envelope `message`: `'Product deleted successfully'`) |
 
 **Query params (GET /):**
 - `?search=dog` — case-insensitive regex match on product name
 - `?category=<ObjectId>` — filter products by category ID
 
-**Error responses:** `{ message: '...' }` with appropriate status (400, 404, 500)
+Like the auth routes, product endpoints return the standard `ResponseFactory` envelope; the **Success Response** column above shows the `data` payload (unwrapped automatically by `axiosConfig.jsx`).
+
+**Error responses:** `{ success: false, message: '...', errors: null, timestamp, statusCode }` with appropriate status (400, 404, 500)
 
 - `POST` / `PUT` return **400** if `name`, `price`, or `category` are missing, price is negative, or the referenced category does not exist
