@@ -15,7 +15,7 @@ This section demonstrates that you understand and can apply object-oriented desi
 |---|---|---|
 | Singleton | `backend/config/db.js` | `connectDB` called once in `server.js`; Mongoose reuses the connection |
 | Factory | `backend/responseFactory.js` | `ResponseFactory.ok()`, `.notFound()`, `.created()` — same shape every time |
-| Repository | `backend/repositories/UserRepository.js` (or `ProductRepository.js`) | Constructor injection, `findByEmail()`, `findAllWithoutPassword()` |
+| Repository | `backend/repositories/UserRepository.js` (or `ProductRepository.js`) | Constructor injection, `findByEmail()`, `findAll()` |
 | Chain of Responsibility | `backend/routes/productRoutes.js` | `router.post('/', protect, adminCheck, createProduct)` — two links before handler |
 | Observer | `backend/models/User.js` | `userSchema.pre('save', …)` — auto-hashes password |
 
@@ -23,10 +23,10 @@ This section demonstrates that you understand and can apply object-oriented desi
 
 | Principle | Where | One-line |
 |---|---|---|
-| Encapsulation | `repositories/UserRepository.js` | `.findAllWithoutPassword()` hides `.find().select('-password')` from callers |
+| Encapsulation | `repositories/UserRepository.js` | `.findAll()` hides `.find().select('-password')` from callers |
 | Abstraction | `controllers/` + `responseFactory.js` | Controllers call `ResponseFactory.ok(data)` without knowing how the object is built |
-| Inheritance | `repositories/BaseRepository.js` | `UserRepository`, `ProductRepository`, `CategoryRepository` all extend `BaseRepository` — inherit `findById`, `create`, `save`, `deleteById` for free |
-| Polymorphism | `responseFactory.js` | `.ok()`, `.created()`, `.notFound()` share the same method interface but produce different status codes |
+| Inheritance | `repositories/BaseRepository.js` | `UserRepository`, `ProductRepository`, `CategoryRepository` all extend `BaseRepository` — inherit `findById`, `findAll`, `count`, `create`, `save`, `deleteById` for free |
+| Polymorphism | `repositories/*.js` | All three repositories override `findAll()` — same inherited interface, different query (populate/sort/`-password`) selected by runtime type |
 
 ## Key Talking Points for the Demo
 
@@ -39,6 +39,8 @@ This section demonstrates that you understand and can apply object-oriented desi
 **Chain of Responsibility** — "Authentication and authorisation are separate concerns. `protect` verifies the JWT and attaches `req.user`. Only if that passes does `adminCheck` run. Adding a third concern (e.g. rate limiting) means adding a third middleware — the existing two don't change."
 
 **Observer** — "The `pre('save')` hook is the safety net. Every place that saves a User — register, profile update, admin reset — automatically gets password hashing. If the hashing lived in the controller, one missed call would store a plaintext password."
+
+**Polymorphism** — "All three repositories inherit `findAll()` from `BaseRepository`, then override it. `ProductRepository` populates the category and sorts newest-first, `CategoryRepository` sorts by name, `UserRepository` strips the password. The Dashboard calls `findAll()` on all three to build its stat counts — same interface, but the runtime picks each repository's own query based on the object's type. That's true method overriding, not just default-argument helpers."
 
 ## Common Exam Questions
 

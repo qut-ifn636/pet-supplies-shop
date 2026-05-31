@@ -11,13 +11,15 @@ const BaseRepository = require('./BaseRepository');
  * - Single responsibility: controllers handle HTTP flow; repositories handle persistence.
  * - Dependency inversion: the model is injected, so tests or future data sources can swap it.
  *
- * Inherits findById, create, save, and deleteById from BaseRepository.
+ * Inherits findById, create, save, deleteById, and count from BaseRepository.
+ * Overrides findAll to populate the category name and sort newest-first.
  */
 class ProductRepository extends BaseRepository {
     constructor(productModel = Product) {
         super(productModel);
     }
 
+    // Override: products need their category populated and a newest-first sort.
     async findAll(filter = {}) {
         return this.model.find(filter)
             .populate('category', 'name')
@@ -32,8 +34,9 @@ class ProductRepository extends BaseRepository {
         return product.populate('category', 'name');
     }
 
+    // Domain-specific helper that reuses the inherited count().
     async countByCategory(categoryId) {
-        return this.model.countDocuments({ category: categoryId });
+        return this.count({ category: categoryId });
     }
 }
 
