@@ -1,5 +1,6 @@
 const categoryRepository = require('../repositories/CategoryRepository');
 const productRepository = require('../repositories/ProductRepository');
+const ResponseFactory = require('../responseFactory');
 
 /**
  * @desc  Get all categories
@@ -9,9 +10,9 @@ const productRepository = require('../repositories/ProductRepository');
 const getCategories = async (req, res) => {
     try {
         const categories = await categoryRepository.findAll();
-        res.json(categories);
+        res.json(ResponseFactory.ok(categories));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -24,11 +25,11 @@ const getCategory = async (req, res) => {
     try {
         const category = await categoryRepository.findById(req.params.id);
         if (!category) {
-            return res.status(404).json({ message: 'Category not found' });
+            return res.status(404).json(ResponseFactory.notFound('Category not found'));
         }
-        res.json(category);
+        res.json(ResponseFactory.ok(category));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -42,18 +43,20 @@ const createCategory = async (req, res) => {
 
     // Validate required fields
     if (!name) {
-        return res.status(400).json({ message: 'Category name is required' });
+        return res.status(400).json(ResponseFactory.badRequest('Category name is required'));
     }
 
     try {
         const category = await categoryRepository.create({ name, description });
-        res.status(201).json(category);
+        res.status(201).json(ResponseFactory.created(category));
     } catch (error) {
         // Handle duplicate name (MongoDB unique index violation)
         if (error.code === 11000) {
-            return res.status(400).json({ message: 'A category with that name already exists' });
+            return res.status(409).json(
+                ResponseFactory.conflict('A category with that name already exists')
+            );
         }
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -68,7 +71,7 @@ const updateCategory = async (req, res) => {
     try {
         const category = await categoryRepository.findById(req.params.id);
         if (!category) {
-            return res.status(404).json({ message: 'Category not found' });
+            return res.status(404).json(ResponseFactory.notFound('Category not found'));
         }
 
         // Only update fields that were provided in the request body
@@ -76,13 +79,15 @@ const updateCategory = async (req, res) => {
         if (description !== undefined) category.description = description;
 
         const updatedCategory = await categoryRepository.save(category);
-        res.json(updatedCategory);
+        res.json(ResponseFactory.ok(updatedCategory, 'Category updated successfully'));
     } catch (error) {
         // Handle duplicate name on update
         if (error.code === 11000) {
-            return res.status(400).json({ message: 'A category with that name already exists' });
+            return res.status(409).json(
+                ResponseFactory.conflict('A category with that name already exists')
+            );
         }
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
@@ -96,21 +101,23 @@ const deleteCategory = async (req, res) => {
     try {
         const category = await categoryRepository.findById(req.params.id);
         if (!category) {
-            return res.status(404).json({ message: 'Category not found' });
+            return res.status(404).json(ResponseFactory.notFound('Category not found'));
         }
 
         // Prevent deletion if products are still assigned to this category
         const productCount = await productRepository.countByCategory(req.params.id);
         if (productCount > 0) {
-            return res.status(400).json({
-                message: `Cannot delete — ${productCount} product(s) still reference this category`,
-            });
+            return res.status(400).json(
+                ResponseFactory.badRequest(
+                    `Cannot delete — ${productCount} product(s) still reference this category`
+                )
+            );
         }
 
         await categoryRepository.deleteById(req.params.id);
-        res.json({ message: 'Category deleted successfully' });
+        res.json(ResponseFactory.ok(null, 'Category deleted successfully'));
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json(ResponseFactory.error(error.message));
     }
 };
 
