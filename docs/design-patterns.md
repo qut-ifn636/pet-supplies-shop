@@ -66,17 +66,18 @@ Three repository classes (`UserRepository`, `CategoryRepository`, `ProductReposi
 
 ```js
 // backend/repositories/UserRepository.js
-class UserRepository {
+class UserRepository extends BaseRepository {
     constructor(userModel = User) {
-        this.userModel = userModel; // injected — easy to swap in tests
+        super(userModel); // model injected — easy to swap in tests
     }
 
     async findByEmail(email) {
-        return this.userModel.findOne({ email });
+        return this.model.findOne({ email });
     }
 
-    async findAllWithoutPassword() {
-        return this.userModel.find().select('-password');
+    // Override of BaseRepository.findAll — never expose password hashes
+    async findAll() {
+        return this.model.find().select('-password');
     }
 }
 module.exports = new UserRepository(); // exported as singleton instance
@@ -145,20 +146,20 @@ The emphasis is on **what lives inside the class**: data and behaviour are co-lo
 > **Encapsulation vs Abstraction:** Encapsulation is the *mechanism* — it's about how a class protects and organises its internals. Abstraction is the *outcome* — it's about what a simplified interface looks like to the caller. A class can encapsulate without providing a particularly clean interface, and you can abstract behind a function without bundling state at all.
 
 **In Petopia:**
-`UserRepository` owns the `userModel` instance and all Mongoose query logic. Controllers can't directly call `.find()` or `.select()` on the model — those details are sealed inside the class. The controller is forced to go through the repository's public methods.
+`UserRepository` owns the model instance and all Mongoose query logic. Controllers can't directly call `.find()` or `.select()` on the model — those details are sealed inside the class. The controller is forced to go through the repository's public methods.
 
 ```js
 // Controller only sees the intention, not the query
-const users = await userRepo.findAllWithoutPassword();
+const users = await userRepo.findAll();
 
-// Inside UserRepository — hidden from caller
-async findAllWithoutPassword() {
-    return this.userModel.find().select('-password');
+// Inside UserRepository — the password projection is hidden from the caller
+async findAll() {
+    return this.model.find().select('-password');
 }
 ```
 
 **Why it matters:**
-If the query needs to change (e.g. also excluding `refreshToken`), the fix is in one place inside the class. No controller needs to be updated. Callers are protected from the change because they never depended on the internal details.
+If the query needs to change (e.g. also excluding `refreshToken`), the fix is in one place inside the class. No controller needs to be updated. Callers are protected from the change because they never depended on the internal details — `getUsers` just asks for `findAll()` and trusts the repository to return safe data.
 
 ---
 
@@ -191,50 +192,65 @@ If the response shape ever needs to change (e.g. adding a `requestId` field for 
 Inheritance means a child class takes on the properties and behaviour of a parent. Think of a `Dog` class that inherits from `Animal` — it gets all of Animal's basic behaviour and adds its own.
 
 **In Petopia:**
-`BaseRepository` defines the four methods every repository needs: `findById`, `create`, `save`, and `deleteById`. Each concrete repository (`UserRepository`, `ProductRepository`, `CategoryRepository`) calls `extends BaseRepository` and inherits these methods without rewriting them. Each subclass then adds only the domain-specific queries it needs — for example, `UserRepository` adds `findByEmail` and `findAllWithoutPassword`, while `ProductRepository` adds `findByIdWithCategory` and `countByCategory`.
+`BaseRepository` defines the methods every repository needs: `findById`, `findAll`, `count`, `create`, `save`, and `deleteById`. Each concrete repository (`UserRepository`, `ProductRepository`, `CategoryRepository`) calls `extends BaseRepository` and inherits these methods without rewriting them. Each subclass then adds only the domain-specific queries it needs — for example, `UserRepository` adds `findByEmail`, while `ProductRepository` adds `findByIdWithCategory` and `countByCategory` (which reuses the inherited `count`). Subclasses also **override** `findAll` where they need different behaviour (see Polymorphism below).
 
 ```js
 // backend/repositories/BaseRepository.js
 class BaseRepository {
     constructor(model) { this.model = model; }
-    async findById(id)   { return this.model.findById(id); }
-    async create(data)   { return this.model.create(data); }
-    async save(doc)      { return doc.save(); }
-    async deleteById(id) { return this.model.findByIdAndDelete(id); }
+    async findById(id)        { return this.model.findById(id); }
+    async findAll(filter = {}) { return this.model.find(filter); }
+    async count(filter = {})   { return this.model.countDocuments(filter); }
+    async create(data)        { return this.model.create(data); }
+    async save(doc)           { return doc.save(); }
+    async deleteById(id)      { return this.model.findByIdAndDelete(id); }
 }
 
 // backend/repositories/UserRepository.js
 class UserRepository extends BaseRepository {
     constructor(userModel = User) { super(userModel); }
-    // inherits findById, create, save, deleteById
+    // inherits findById, count, create, save, deleteById
     async findByEmail(email) { return this.model.findOne({ email }); }
-    async findAllWithoutPassword() { return this.model.find().select('-password'); }
+    async findAll() { return this.model.find().select('-password'); } // override
 }
 ```
 
 **Why it matters:**
-Without `BaseRepository`, the same four method bodies appear identically in all three repository files. If `create` ever needed to change — for example, to add audit logging — the change would need to be made in three places. With inheritance, it is in one.
+Without `BaseRepository`, the same method bodies appear identically in all three repository files. If `create` ever needed to change — for example, to add audit logging — the change would need to be made in three places. With inheritance, it is in one.
 
 ---
 
-### Polymorphism — `backend/responseFactory.js` method overloading
+### Polymorphism — `backend/repositories/` `findAll()` override
 
 **What is it?**
-Polymorphism means the same interface behaves differently depending on context. Think of a "+" operator: `1 + 2` is addition, `"hello" + "world"` is concatenation — same symbol, different behaviour.
+Polymorphism means one interface, many behaviours: you call the same method on different objects and each does the right thing for its own type. Think of an `Animal` reference with a `speak()` method — call it on a `Dog` and you get a bark, on a `Cat` a meow. The caller doesn't branch on the type; the runtime picks the correct implementation.
 
 **In Petopia:**
-`ResponseFactory` uses method overloading through default parameters. `success()`, `created()`, and `ok()` all call the same underlying builder but with different default values for `message` and `statusCode`. From the caller's perspective, `ResponseFactory.created(data)` and `ResponseFactory.ok(data)` have the same interface but produce different HTTP status codes and messages.
+Every repository extends `BaseRepository`, which defines a default `findAll(filter)`. Each subclass **overrides** `findAll()` with the query its data needs: `ProductRepository` populates the category and sorts newest-first, `CategoryRepository` sorts alphabetically by name, `UserRepository` strips the password hash. Any code holding a repository calls the same `.findAll()` and the runtime dispatches to the matching override based on the object's actual type.
 
 ```js
-static created(data, message = 'Resource created successfully') {
-    return this.success(data, message, 201); // 201 Created
-}
+// BaseRepository — the shared interface + default behaviour
+async findAll(filter = {}) { return this.model.find(filter); }
 
-static ok(data, message = 'Request successful') {
-    return this.success(data, message, 200); // 200 OK
+// ProductRepository overrides it
+async findAll(filter = {}) {
+    return this.model.find(filter).populate('category', 'name').sort({ createdAt: -1 });
 }
-// Same interface, different behaviour based on context
+// CategoryRepository overrides it
+async findAll() { return this.model.find().sort({ name: 1 }); }
+// UserRepository overrides it
+async findAll() { return this.model.find().select('-password'); }
 ```
+
+The Dashboard is a real polymorphic call site — it fetches products, categories, and users through their `findAll()` endpoints to build its stat counts, and each returns data shaped correctly for its type without the caller knowing how.
+
+```js
+// Same call, three different behaviours selected by runtime type
+const all = await Promise.all([productRepo, categoryRepo, userRepo].map(r => r.findAll()));
+```
+
+**Why it matters:**
+The caller depends only on the `BaseRepository` contract (`findAll` returns a list), not on each model's query details. Adding a new repository — say `OrderRepository` with its own `findAll()` — requires no change to any existing caller. This is genuine subtype polymorphism via method overriding, not just helper methods with default arguments.
 
 ---
 
@@ -250,4 +266,4 @@ static ok(data, message = 'Request successful') {
 | Encapsulation | `repositories/UserRepository.js` | Query internals hidden inside the class |
 | Abstraction | `controllers/` + `responseFactory.js` | Controllers express intent, not implementation |
 | Inheritance | `repositories/BaseRepository.js` | Shared CRUD methods in one base class; subclasses add domain-specific queries |
-| Polymorphism | `responseFactory.js` | Same method interface, different status codes per context |
+| Polymorphism | `repositories/*.js` | Each repository overrides `findAll()`; same interface, different query per type |

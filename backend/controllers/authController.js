@@ -147,7 +147,7 @@ const updateUserProfile = async (req, res) => {
  */
 const getUsers = async (req, res) => {
     try {
-        const users = await userRepository.findAllWithoutPassword();
+        const users = await userRepository.findAll();
         return res.json(
             ResponseFactory.ok(users, 'Users retrieved successfully')
         );
